@@ -8,7 +8,8 @@ const pubsub = new PubSub();
 const typeDefs = `
   type Trail {
     name: String
-    lift: [String]
+    lift: [String]!
+    lifts: [Lift]!
     difficulty: String
     status: TrailStatus
     groomed: Boolean
@@ -43,8 +44,10 @@ const typeDefs = `
     "Number of lifts at Snowtooth Mountain"
     liftCount: Int!
     trailCount: Int!
-    allLifts(status: LiftStatus): [Lift]!
-    allTrails(status: TrailStatus): [Trail]!
+    allLifts(status: LiftStatus): [Lift!]!
+    allTrails(status: TrailStatus): [Trail!]!
+    findLiftById(id: String): Lift
+    findTrailByName(name: String): Trail
   }
 
   type Mutation {
@@ -77,6 +80,9 @@ const resolvers = {
         return trails.filter(trail => trail.status === status);
       }
     },
+    findLiftById: (parent, { id }) => lifts.find(lift => lift.id === id),
+    findTrailByName: (parent, { name }) =>
+      trails.find(trail => trail.name === name),
   },
   Mutation: {
     setLiftStatus: (parent, { id, status }) => {
@@ -106,10 +112,14 @@ const resolvers = {
         pubsub.asyncIterator('trail-status-change'),
     },
   },
-  // Lift: {
-  //   trailAccess: (parent, { id, status }) =>
-  //     trails.filter(trail => trail.lift.includes(parent.id)),
-  // },
+  Lift: {
+    trails: (parent, { id, status }) =>
+      trails.filter(trail => trail.lift.includes(parent.id)),
+  },
+  Trail: {
+    lifts: (parent, { id }) =>
+      lifts.filter(lift => lift.trails.includes(parent.id)),
+  },
 };
 
 const server = new ApolloServer({
